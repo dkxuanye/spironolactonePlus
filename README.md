@@ -25,8 +25,10 @@ Do *not* ask for an ETA for new features or version support
 2. run `https://github.com/Orangera1n/spironolactone.git` and `cd spironolactone`.
 3. To make a bootchain, run ./makebootfiles.sh (iOS version here) (location of firmware key json here).
 4. To boot a chain, run the command makebootfiles.sh tells you to.
+5. To ssh, run ./ssh.sh
 # Credits
-- [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice) for libirecovery and other tools
+- [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice) for libirecovery and iproxy
+- [Duy Tran](https://github.com/AldazActivator) for devicetree-parse
 - [Nathan](https://github.com/verygenericname) for [sshtars](https://github.com/verygenericname/sshtars/) and [SSHRD_Script](https://github.com/verygenericname/), which is going to be helpful for understanding how this works
 - [Paradigm Shift](https://github.com/prdgmshift) for [usbliter8 Explot](https://github.com/prdgmshift/usbliter8) used in the tool
 - [tihmstar](https://github.com/tihmstar) for pzb/original iBoot64Patcher, and img4tool

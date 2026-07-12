@@ -55,6 +55,9 @@ if [ "$option" = boot ]; then
         echo "Loading and Booting Kernel!"
         "$oscheck"/irecovery -f bootchain/"$bootchain"/kernelcache.img4
         "$oscheck"/irecovery -c "bootx"
+        if [[ "$bootchain" == *"ramdisk" ]]; then
+            echo 'In a few seconds, you can SSH via ./ssh.sh'
+        fi
 else
         echo 'To boot, you need to provide a "boardconfig-version-build" combination with your "./spiro.sh boot" commnad'
     fi
