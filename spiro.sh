@@ -1,22 +1,31 @@
 oscheck=$(uname)
 option=$1
 bootchain=$2
-BUILD=Spironolactone-11
+BUILD=$(grep "BUILD" verinfo | cut -d':' -f2)
+VERSION=$(grep "VERSION" verinfo | cut -d':' -f2)
+#Spironolactone-10.1
 BRANCH=$(git branch --show-current)
-echo "Welcome to Spironolactone v0.1.2 (Build: "$BUILD-$BRANCH")!"
+
+echo "Welcome to Spironolactone v"$VERSION" (Build: "$BUILD-$BRANCH")!"
 
 if [ "$option" = boot ]; then
     if [ -n "$bootchain" ]; then
         sleep 3
         echo "Loading iBoot!"
-        "$oscheck"/usbliter8ctl boot bootchain/"$bootchain"/iBoot.patched.bin
+        "$oscheck"/usbliter8_boot bootchain/"$bootchain"/iBoot.patched.bin
         sleep 4
       #  "$oscheck"/irecovery -f bootchain/"$bootchain"/logo.img4
       #  "$oscheck"/irecovery -c "setpicture 0x1"
+      # SEP loading is disabled until further work
+      #  if [[ -e bootchain/$bootchain/sep-firmware.img4 ]]; then
+      #      echo "Loading SEP"
+     #       "$oscheck"/irecovery -f bootchain/"$bootchain"/sep-firmware.img4
+     #       "$oscheck"/irecovery -c sepfirmware
+     #   fi
         echo "Loading Devicetree!"
         "$oscheck"/irecovery -f bootchain/"$bootchain"/devicetree.img4
         "$oscheck"/irecovery -c "devicetree"
-        if [ -e bootchain/"$bootchain"/.ramdisk ]; then
+        if [[ "$bootchain" == *"ramdisk" ]]; then
             echo "Loading Ramdisk!"
             "$oscheck"/irecovery -f bootchain/"$bootchain"/ramdisk.img4
             sleep 2
