@@ -5,6 +5,9 @@
 #   --unlockcd             gigalocker-init + seputil --load <preboot SEP> + Data mount
 #   --unlockcd-chain-sep   gigalocker-init + seputil --load /var/root/sep-chain.img4 + Data mount
 # Every external call is guarded by a 20s timeout. Verdict: /mnt2/{mobile,root,containers}.
+# Exit codes: 0=MOUNTED 75=NOT_READY 2=ERROR(no SEP/seputil) 76=refused(boot-args) 64=usage
+# Note: a kernel-wedged seputil yields rc 124 via the guard, but a device panic yields
+# NO output at all — hosts must treat missing VERDICT / ssh failure as panic-or-hang.
 set +e
 PATH=/usr/bin:/bin:/usr/sbin:/sbin:/System/Library/Filesystems/apfs.fs
 APFS_UTIL=/System/Library/Filesystems/apfs.fs/apfs.util
@@ -31,6 +34,12 @@ run_bg_timeout(){
         if [ "$_i" -ge "$_sec" ]; then
             log "timeout ${_sec}s: $*"
             kill -9 "$_pid" 2>/dev/null
+            # bounded reap: an unkillable (kernel-wedged) child must not hang the script
+            _j=0
+            while kill -0 "$_pid" 2>/dev/null; do
+                [ "$_j" -ge 3 ] && { log "WARNING: child $_pid unkillable, abandoning"; return 124; }
+                sleep 1; _j=$((_j+1))
+            done
             wait "$_pid" 2>/dev/null
             return 124
         fi
@@ -119,6 +128,7 @@ case "$MODE" in
             SEP=""
             if [ -f /mnt6/active ]; then
                 a=$(/bin/cat /mnt6/active 2>/dev/null)
+                case "$a" in */*|*..*) a="" ;; esac
                 [ -n "$a" ] && SEP="/mnt6/$a/usr/standalone/firmware/sep-firmware.img4"
             fi
             [ -f "$SEP" ] || SEP=/mnt1/usr/standalone/firmware/sep-firmware.img4
@@ -131,7 +141,13 @@ case "$MODE" in
         [ -x "$SEPUTIL" ] || { log "VERDICT: ERROR no seputil"; cleanup_oblit; exit 2; }
         log "gigalocker-init"
         run_bg_timeout 20 "$SEPUTIL" --gigalocker-init
-        log "gigalocker-init rc=$?"
+        grc=$?
+        log "gigalocker-init rc=$grc"
+        if [ "$grc" -ne 0 ]; then
+            log "VERDICT: FLOW_BROKEN gigalocker-init rc=$grc"
+            cleanup_oblit
+            exit 4
+        fi
         log "seputil --load $SEP"
         run_bg_timeout 20 "$SEPUTIL" --load "$SEP"
         log "seputil --load rc=$?"

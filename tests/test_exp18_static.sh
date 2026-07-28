@@ -19,5 +19,10 @@ grep -q '/mnt2/mobile' "$F"; check "three-dir verdict check" 0 $?
 grep -q 'VERDICT' "$F"; check "machine-parseable VERDICT line" 0 $?
 grep -q 'oblit-inprogress' "$F"; check "oblit nvram guard" 0 $?
 
+# every SEPUTIL/MOUNT_APFS invocation must go through run_bg_timeout
+grep -E '"(\$SEPUTIL|\$MOUNT_APFS)"' "$F" | grep -v 'run_bg_timeout' | grep -vE '^\s*#|SEPUTIL=|MOUNT_APFS=|\[ -x' | grep -q . \
+    && check "unguarded SEPUTIL/MOUNT_APFS call" 1 0 || check "all heavy calls guarded" 0 0
+grep -q 'FLOW_BROKEN' "$F"; check "flow-broken verdict exists" 0 $?
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_static: $fails FAILURES"; exit 1; fi
 echo "test_exp18_static: all pass"
