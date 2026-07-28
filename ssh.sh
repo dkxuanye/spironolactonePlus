@@ -26,6 +26,10 @@ case "${1:-}" in
         ;;
     *)
         start_proxy
-        "$oscheck"/sshpass -p 'alpine' ssh -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -p2222 root@localhost "${1:-}"
+        if [ $# -gt 0 ]; then
+            "$oscheck"/sshpass -p 'alpine' ssh -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -p2222 root@localhost "$1"
+        else
+            "$oscheck"/sshpass -p 'alpine' ssh -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -p2222 root@localhost
+        fi
         ;;
 esac
