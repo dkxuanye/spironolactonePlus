@@ -1,6 +1,6 @@
 #!/bin/bash
 # lib/common.sh - shared helpers for Spironolactone scripts.
-# Sourced by spiro.sh / makebootfiles.sh / scripts/validate_mounts.sh.
+# Sourced by spiro.sh / makebootfiles.sh / ssh.sh.
 
 log()  { printf '\033[1;36m[+] %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }

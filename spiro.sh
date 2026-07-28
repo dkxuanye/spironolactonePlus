@@ -79,6 +79,8 @@ boot_via_json() {
     [ -x "$JQ" ] || die "jq not found/executable: $JQ"
     "$JQ" -e . "$json" >/dev/null 2>&1 || die "invalid JSON: $json"
     "$JQ" -e '.sequence | type == "array" and length > 0' "$json" >/dev/null 2>&1 || die "no usable sequence in $json"
+    "$JQ" -e '[.sequence[].action] | index("usbliter8_boot")' "$json" >/dev/null 2>&1 || die "sequence has no usbliter8_boot step: $json"
+    "$JQ" -e '[.sequence[].irecv_command] | index("bootx")' "$json" >/dev/null 2>&1 || die "sequence has no bootx step: $json"
     local line action filename cmd slp
     # split TSV manually: IFS=tab read would collapse empty middle fields
     while IFS= read -r line; do
@@ -107,6 +109,7 @@ boot_via_json() {
 boot_legacy() {
     warn "no boot_order.json in $BC_DIR; using legacy built-in sequence (see docs/superpowers/specs/2026-07-27-pipeline-hardening-design.md)"
     boot_usbliter8 "$BC_DIR/iBoot.patched.bin" 4
+    # SEP 加载参照 ICH_A12_plus_Ramdisk issue #5 的已验证配置: rsep 类型 img4 + rsepfirmware 命令, iBoot 之后、devicetree 之前; ramdisk 内禁止再跑任何 seputil
     if [ -e "$BC_DIR"/sep-firmware.img4 ]; then
         log "Loading SEP"
         send_file "$BC_DIR/sep-firmware.img4" 15

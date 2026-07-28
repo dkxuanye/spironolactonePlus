@@ -42,8 +42,8 @@ cleanup_oblit(){
 
 ba=$(/usr/sbin/nvram -p 2>/dev/null | /usr/bin/grep '^boot-args')
 case "$ba" in
-    *nand-enable-reformat=1*)
-        log "refuse: boot-args contain nand-enable-reformat=1: $ba"
+    *nand-enable-reformat*)
+        log "refuse: boot-args contain nand-enable-reformat: $ba"
         exit 76
         ;;
 esac

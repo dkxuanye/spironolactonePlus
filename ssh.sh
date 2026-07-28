@@ -5,6 +5,7 @@
 #   ./ssh.sh push-helpers    push resources/mount_helpers.sh to the device
 set -u
 oscheck="${SPIRO_OSCHECK:-$(uname)}"
+. lib/common.sh
 
 start_proxy() {
     if lsof -nP -iTCP:2222 -sTCP:LISTEN 2>/dev/null | grep -q iproxy; then
@@ -21,6 +22,7 @@ start_proxy() {
 case "${1:-}" in
     push-helpers)
         start_proxy
+        setup_log ssh
         "$oscheck"/sshpass -p alpine scp -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null -P 2222 \
             resources/mount_helpers.sh root@localhost:/var/root/mount_helpers.sh || { echo "scp failed"; exit 1; }

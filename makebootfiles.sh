@@ -75,6 +75,7 @@ if [ "$#" -gt 2 ]; then
 fi
 [ -z "$TYPE" ] || case "$TYPE" in ramdisk|dualboot|downgrade) ;; *) die "invalid --type: $TYPE";; esac
 [ -z "$BOOTARGOPT" ] || case "$BOOTARGOPT" in verbose|serial|neither) ;; *) die "invalid --bootargs: $BOOTARGOPT";; esac
+setup_log makebootfiles
 mkdir work
 cd work
 if [ -z "$TYPE" ]; then
@@ -132,8 +133,8 @@ else
     ../"$oscheck"/pzb -g "$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" "$ipswurl"
 fi
 cd ..
-iv=$(cat $fwkeyjson |  jq -r 'first(.. | objects | select(has("iv")) | .iv)' | tr -d '"[]\n')
-key=$(cat $fwkeyjson | jq -r 'first(.. | objects | select(has("key")) | .key)' | tr -d '"[]\n')
+iv=$(cat $fwkeyjson |  "$JQ" -r 'first(.. | objects | select(has("iv")) | .iv)' | tr -d '"[]\n')
+key=$(cat $fwkeyjson | "$JQ" -r 'first(.. | objects | select(has("key")) | .key)' | tr -d '"[]\n')
 iv=${iv:2}
 key=${key:2}
 ivkey=$iv$key

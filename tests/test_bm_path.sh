@@ -39,5 +39,12 @@ else
     echo "ok: makebootfiles.sh uses lib/device.sh"
 fi
 
+# fwkey extraction must use the bundled jq ("$JQ"), never a bare pipeline into jq
+if grep -nE '\| *jq ' makebootfiles.sh | grep -q .; then
+    echo "FAIL: makebootfiles.sh pipes into bare jq"; fails=$((fails+1))
+else
+    echo "ok: no bare jq invocations"
+fi
+
 if [ "$fails" -gt 0 ]; then echo "test_bm_path: $fails FAILURES"; exit 1; fi
 echo "test_bm_path: all pass"

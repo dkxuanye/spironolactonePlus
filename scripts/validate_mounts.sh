@@ -35,14 +35,20 @@ ok "SSH reachable"
 
 check_path -d /mnt1/usr/standalone/firmware "System(/mnt1)" fail
 if remote "test -e /mnt6/active && echo yes" | grep -qx yes; then
-    ok "Preboot(/mnt6): active present"
+    if remote 'test -d "/mnt6/$(cat /mnt6/active 2>/dev/null)" && echo yes' | grep -qx yes; then
+        ok "Preboot(/mnt6): active present"
+    else
+        wrn "Preboot(/mnt6): active present but unresolved"
+    fi
 elif remote "ls /mnt6 2>/dev/null | grep -E '^[0-9A-Fa-f]{40,}' | head -1" | grep -q .; then
     wrn "Preboot(/mnt6): no active file, but hash dir present"
 else
     bad "Preboot(/mnt6): neither active nor hash dir"
 fi
-if remote "ls /mnt7 2>/dev/null | head -1" | grep -q .; then
-    ok "xART(/mnt7): non-empty"
+if remote "ls /mnt7 2>/dev/null | grep -i gigalocker | head -1" | grep -q .; then
+    ok "xART(/mnt7): gigalocker present"
+elif remote "ls /mnt7 2>/dev/null | head -1" | grep -q .; then
+    wrn "xART(/mnt7): non-empty but no gigalocker"
 else
     wrn "xART(/mnt7): empty or not mounted"
 fi

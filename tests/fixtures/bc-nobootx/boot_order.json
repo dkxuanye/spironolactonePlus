@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "sequence": [
+    {"action": "usbliter8_boot", "filename": "iBoot.patched.bin", "sleep_after": 4, "send_order": 0}
+  ]
+}

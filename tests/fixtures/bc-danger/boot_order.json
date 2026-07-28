@@ -1,6 +1,8 @@
 {
   "version": 1,
   "sequence": [
-    {"action": "command", "command": "setenv boot-args rd=md0 nand-enable-reformat=1", "send_order": 0}
+    {"action": "usbliter8_boot", "filename": "iBoot.patched.bin", "sleep_after": 0, "send_order": 0},
+    {"action": "command", "command": "setenv boot-args rd=md0 nand-enable-reformat=1", "send_order": 1},
+    {"action": "component", "name": "RestoreKernelCache", "filename": "kernelcache.img4", "irecv_command": "bootx", "send_order": 2}
   ]
 }

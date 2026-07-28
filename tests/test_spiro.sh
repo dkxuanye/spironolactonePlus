@@ -55,5 +55,11 @@ rc=$?
 [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "no usable sequence" \
     && echo "ok: sequence-less JSON refused" || note_fail "noseq gate (rc=$rc): $out"
 
+# 6) sequence without a bootx step dies
+out=$(bash ./spiro.sh boot tests/fixtures/bc-nobootx --dry-run 2>&1)
+rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "no bootx step" \
+    && echo "ok: bootx-less JSON refused" || note_fail "nobootx gate (rc=$rc): $out"
+
 if [ "$fails" -gt 0 ]; then echo "test_spiro: $fails FAILURES"; exit 1; fi
 echo "test_spiro: all pass"
