@@ -23,9 +23,10 @@ Do *not* ask for an ETA for new features or version support
 0. Flash the RP2350 board with the uf2 files available at https://github.com/prdgmshift/usbliter8/releases/tag/1.0
 1. Get the key json file: Head to https://theapplewiki.com/wiki/Firmware and head to your iOS version page for your device type (iPhone or iPad), then head to the specific device section (i.e. iPhone XR or iPad Air (3rd generation)), and then find your iOS version you want to make a ramdisk of, then click on the "iDeviceX,X" page, then download the keys json.
 2. run `https://github.com/Orangera1n/spironolactone.git` and `cd spironolactone`.
-3. To make a bootchain, run ./makebootfiles.sh (iOS version here) (location of firmware key json here).
-4. To boot a chain, run the command makebootfiles.sh tells you to.
-5. To ssh, run ./ssh.sh
+3. To make a bootchain, run `./makebootfiles.sh (iOS version here) (location of firmware key json here)`. Non-interactive flags: `--type ramdisk|dualboot|downgrade --bootargs verbose|serial|neither [--dualboot-disk disk0s1sN] [--im4m path]` (env `SPIRO_TYPE`/`SPIRO_BOOTARGS`/`SPIRO_DUALBOOT_DISK`/`SPIRO_IM4M` also work). Each bootchain now ships a `boot_order.json` describing the exact boot sequence.
+4. To boot a chain, run the command makebootfiles.sh tells you to (`./spiro.sh boot <chain>`). Add `--dry-run` to print the sequence without a device; dangerous boot-args are refused unless `ALLOW_DANGEROUS_BOOTARGS=1`.
+5. To ssh, run `./ssh.sh`. Push the on-device mount helper with `./ssh.sh push-helpers`, then `./ssh.sh 'sh /var/root/mount_helpers.sh'` mounts System/Preboot/xART (Data is refused by default on A12; `--try-data` attempts it with a 20s guard). Validate mounts from the host with `./scripts/validate_mounts.sh`.
+6. To run the offline test suite (no device needed), run `bash tests/run_tests.sh`.
 # Credits
 - [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice) for libirecovery and iproxy
 - [Duy Tran](https://github.com/AldazActivator) for devicetree-parse
