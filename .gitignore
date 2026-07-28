@@ -1,3 +1,10 @@
 bootchain/*
 work/*
 fwkeys.json
+# 本地研究产物，不推送（UnlockCD 分析提取物 ~747MB、研究笔记、固件密钥）
+research/
+RESEARCH_A12_MNT2.md
+firmwarekeys_*.json
+tools-local/
+resources/ssh/
+run_14.0beta5_ramdisk.sh
