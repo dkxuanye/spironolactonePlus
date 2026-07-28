@@ -46,5 +46,13 @@ printf '%s' "$capout" | grep -q "VERDICT: MOUNTED" \
 [ -n "$LOG_FILE" ] && echo "ok: LOG_FILE restored after scoped clear" || note_fail "LOG_FILE clobbered"
 LOG_FILE=""
 
+# regression: verdict parse must read field 3 ([exp18] VERDICT: X)
+v=$(printf '[exp18] VERDICT: MOUNTED\n' | awk '/VERDICT:/{print $3; exit}')
+[ "$v" = "MOUNTED" ] && echo "ok: verdict parse MOUNTED" || note_fail "verdict parse: got [$v]"
+v=$(printf '[exp18] VERDICT: FLOW_BROKEN gigalocker-init rc=1\n' | awk '/VERDICT:/{print $3; exit}')
+[ "$v" = "FLOW_BROKEN" ] && echo "ok: verdict parse FLOW_BROKEN" || note_fail "verdict parse flow: got [$v]"
+v=$(printf '[exp18] mount failed rc=75: /dev/disk1s2 -> /mnt2\n' | awk '/VERDICT:/{print $3; exit}')
+[ -z "$v" ] && echo "ok: no verdict line yields empty" || note_fail "phantom verdict: got [$v]"
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"

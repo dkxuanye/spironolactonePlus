@@ -35,8 +35,6 @@ done
 case "$MODE" in ich-safe|unlockcd|unlockcd-chain-sep) ;; *) die "invalid --mode: $MODE";; esac
 case "$BOOT" in ich|spiro) ;; *) die "invalid --boot: $BOOT";; esac
 
-setup_log exp18
-
 # --- preflight ---
 [ -d "$CHAIN_DIR" ] || die "chain dir not found: $CHAIN_DIR"
 [ -f "$DEVICE_SCRIPT" ] || die "device script not found: $DEVICE_SCRIPT"
@@ -61,6 +59,8 @@ DRYRUN plan:
 EOF
     exit 0
 fi
+
+setup_log exp18
 
 is_pwned_dfu || die "no pwned DFU device (PWND: expected). Enter DFU with RP2350 first."
 
@@ -107,14 +107,18 @@ log "run experiment: --$MODE"
 out=$(LOG_FILE="" run_timeout 240 ssh_run "sh /var/root/mount_experiment_18.sh --$MODE" 2>&1)
 erc=$?
 printf '%s\n' "$out" | tee -a "$LOG_FILE"
-verdict=$(printf '%s\n' "$out" | awk '/VERDICT:/{print $2; exit}')
+verdict=$(printf '%s\n' "$out" | awk '/VERDICT:/{print $3; exit}')
 log "experiment rc=$erc verdict=${verdict:-NONE}"
 
 # --- reboot ---
 if [ "$NO_REBOOT" != 1 ]; then
     log "reboot device"
-    ssh_run "/usr/sbin/nvram auto-boot=true; /sbin/reboot" >>"$LOG_FILE" 2>&1 \
-        || warn "reboot command failed; reboot manually"
+    run_timeout 15 ssh_run "/usr/sbin/nvram auto-boot=true; /sbin/reboot" >>"$LOG_FILE" 2>&1 \
+        || warn "reboot command failed/timeout; reboot manually"
+fi
+
+if [ -z "$verdict" ]; then
+    warn "no VERDICT received (rc=$erc) — device panicked or hung; this is NOT a clean mount failure; see log"
 fi
 
 echo "RESULT: mode=$MODE verdict=${verdict:-NONE} log=$LOG_FILE"
