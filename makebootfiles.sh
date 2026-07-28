@@ -69,6 +69,8 @@ if [ "$#" -gt 2 ]; then
         esac
     done
 fi
+[ -z "$TYPE" ] || case "$TYPE" in ramdisk|dualboot|downgrade) ;; *) die "invalid --type: $TYPE";; esac
+[ -z "$BOOTARGOPT" ] || case "$BOOTARGOPT" in verbose|serial|neither) ;; *) die "invalid --bootargs: $BOOTARGOPT";; esac
 mkdir work
 cd work
 if [ -z "$TYPE" ]; then
@@ -245,7 +247,7 @@ cp work/iBoot.patched bootchain/$filedir/iBoot.patched.bin
         items+=("{\"action\":\"component\",\"name\":\"$c\",\"filename\":\"$c.img4\",\"irecv_command\":\"firmware\"}")
     done
     items+=('{"action":"component","name":"RestoreKernelCache","filename":"kernelcache.img4","irecv_command":"bootx"}')
-    printf '%s\n' "${items[@]}" | "$oscheck"/jq -s 'to_entries | map(.value + {send_order: .key}) | {version: 1, sequence: .}' > bootchain/"$filedir"/boot_order.json
+    printf '%s\n' "${items[@]}" | "$oscheck"/jq -s 'to_entries | map(.value + {send_order: .key}) | {version: 1, sequence: .}' > bootchain/"$filedir"/boot_order.json || die "failed to write boot_order.json"
 }
 echo "boot_order.json written to bootchain/$filedir/"
 

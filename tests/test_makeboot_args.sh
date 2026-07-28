@@ -5,7 +5,6 @@ cd "$(dirname "$0")/.."
 chmod +x tests/mockbin/irecovery tests/mockbin/pzb
 
 fails=0
-check() { if [ "$2" = "$3" ]; then echo "ok: $1"; else echo "FAIL: $1 ($2)"; fails=$((fails+1)); fi }
 
 export MOCKBIN_LOG=/tmp/mockbin_calls.log
 : > "$MOCKBIN_LOG"
@@ -58,6 +57,15 @@ if printf '%s' "$out2" | grep -q "missing --type"; then
 else
     echo "FAIL: missing --type not reported"; fails=$((fails+1))
 fi
+
+# invalid --type value must die
+out3=$(SPIRO_OSCHECK=tests/mockbin bash ./makebootfiles.sh "http://example.invalid/fw.ipsw" firmwarekeys_14.4.2_18D70_n841.json --type bogus --bootargs neither </dev/null 2>&1)
+printf '%s' "$out3" | grep -q "invalid --type" && echo "ok: invalid --type rejected" || { echo "FAIL: invalid --type not rejected"; fails=$((fails+1)); }
+
+# exact sequence order locked against the legacy boot order
+seq_names=$(Darwin/jq -r '[.sequence[] | (.name // .action)] | join(",")' "$TEST_CHAIN/boot_order.json")
+[ "$seq_names" = "usbliter8_boot,RestoreSEP,DeviceTree,RestoreRamDisk,RestoreTrustCache,AOP,ANE,AVE,ISP,GFX,SIO,RestoreKernelCache" ] \
+    && echo "ok: sequence order matches legacy" || { echo "FAIL: sequence order: $seq_names"; fails=$((fails+1)); }
 
 if [ "$fails" -gt 0 ]; then echo "test_makeboot_args: $fails FAILURES"; exit 1; fi
 echo "test_makeboot_args: all pass"
