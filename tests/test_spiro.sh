@@ -7,26 +7,24 @@ fails=0
 note_fail() { echo "FAIL: $1"; fails=$((fails+1)); }
 
 BK="/tmp/boot_order_backup.$$.json"
-trap '[ -f "$BK" ] && mv "$BK" "bootchain/n841ap-14.4.2-18D70-ramdisk/boot_order.json"' EXIT
+trap '[ -f "$BK" ] && mv "$BK" "$BK_TARGET"' EXIT
 
-CHAIN="n841ap-14.4.2-18D70-ramdisk"
-JSON="bootchain/$CHAIN/boot_order.json"
-
-# 1) JSON path vs legacy fallback: dry-run sequences must be identical
-if [ -f "$JSON" ]; then
+# 1) JSON path vs legacy fallback: dry-run sequences must be identical (both chains)
+for CHAIN in n841ap-14.4.2-18D70-ramdisk n841ap---ramdisk; do
+    JSON="bootchain/$CHAIN/boot_order.json"
+    [ -f "$JSON" ] || { note_fail "$CHAIN: boot_order.json missing"; continue; }
     out_json=$(bash ./spiro.sh boot "$CHAIN" --dry-run 2>/dev/null | grep '^DRYRUN:')
+    BK_TARGET="$JSON"
     mv "$JSON" "$BK"
     out_legacy=$(bash ./spiro.sh boot "$CHAIN" --dry-run 2>/dev/null | grep '^DRYRUN:')
     mv "$BK" "$JSON"
     if [ "$out_json" = "$out_legacy" ] && [ -n "$out_json" ]; then
-        echo "ok: dry-run JSON == legacy"
+        echo "ok: dry-run JSON == legacy ($CHAIN)"
     else
-        note_fail "dry-run JSON != legacy"
+        note_fail "dry-run JSON != legacy ($CHAIN)"
         diff <(printf '%s\n' "$out_json") <(printf '%s\n' "$out_legacy") | head -10
     fi
-else
-    echo "SKIP: $JSON missing (created in Task 6)"
-fi
+done
 
 # 2) dangerous boot-args gate fires even in dry-run
 out=$(bash ./spiro.sh boot tests/fixtures/bc-danger --dry-run 2>&1)
