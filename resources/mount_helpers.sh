@@ -86,6 +86,7 @@ mount_one(){
 }
 
 mount_one "$SYS" /mnt1
+SYS_RC=$?
 mount_one "$PREBOOT" /mnt6
 mount_one "$XART" /mnt7
 
@@ -102,4 +103,8 @@ else
 fi
 
 cleanup_oblit
+if [ "${SYS_RC:-1}" -ne 0 ] && ! mounted_on /mnt1 >/dev/null 2>&1; then
+    log "FAIL: System volume not mounted on /mnt1"
+    exit 3
+fi
 exit 0
