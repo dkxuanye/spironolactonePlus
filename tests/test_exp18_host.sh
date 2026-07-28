@@ -83,5 +83,15 @@ rc=$?
     && echo "ok: spiro boot requires boot_order.json" || note_fail "spiro json requirement (rc=$rc): $out"
 rm -rf "$FAKE"
 
+# preflight passes with the real ICH chain present (or reports precisely)
+out=$(bash scripts/preflight_18x.sh 2>&1)
+rc=$?
+if [ -d "$HOME/Desktop/ICH_A12_plus_Ramdisk/bootchain/n841ap-18.7.9-22H355-ramdisk" ]; then
+    [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "手动升级清单" \
+        && echo "ok: preflight passes + prints checklist" || note_fail "preflight (rc=$rc)"
+else
+    [ "$rc" -ne 0 ] && echo "ok: preflight reports missing chain" || note_fail "preflight should fail without chain"
+fi
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"
