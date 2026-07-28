@@ -49,12 +49,13 @@ send_cmd() { # send_cmd <command> <timeout>
 }
 
 maybe_sleep() { # maybe_sleep <secs> — 0 skips; prints in dry-run
+    case "${1:-0}" in ''|*[!0-9]*) die "invalid sleep_after value: ${1}";; esac
     [ "${1:-0}" != "0" ] || return 0
     if [ "$dry_run" = 1 ]; then printf 'DRYRUN: sleep %s\n' "$1"; return 0; fi
     sleep "$1"
 }
 
-big_timeout() { # big_timeout <filename>
+big_timeout() { # big_timeout <filename> — SPIRO_IRECV_TIMEOUT overrides BOTH tiers when set
     case "$1" in
         ramdisk.img4|kernelcache.img4) printf '%s' "${SPIRO_IRECV_TIMEOUT:-90}" ;;
         *) printf '%s' "${SPIRO_IRECV_TIMEOUT:-15}" ;;
@@ -75,7 +76,9 @@ boot_usbliter8() { # boot_usbliter8 <path> <sleep_after>
 
 boot_via_json() {
     local json="$BC_DIR/boot_order.json"
+    [ -x "$JQ" ] || die "jq not found/executable: $JQ"
     "$JQ" -e . "$json" >/dev/null 2>&1 || die "invalid JSON: $json"
+    "$JQ" -e '.sequence | type == "array" and length > 0' "$json" >/dev/null 2>&1 || die "no usable sequence in $json"
     local line action filename cmd slp
     # split TSV manually: IFS=tab read would collapse empty middle fields
     while IFS= read -r line; do
@@ -86,7 +89,8 @@ boot_via_json() {
             usbliter8_boot)
                 boot_usbliter8 "$BC_DIR/$filename" "$slp" ;;
             command)
-                send_cmd "$cmd" 15 ;;
+                send_cmd "$cmd" 15
+                maybe_sleep "$slp" ;;
             component)
                 [ -f "$BC_DIR/$filename" ] || die "missing file: $BC_DIR/$filename"
                 if [ "$dry_run" != 1 ]; then
