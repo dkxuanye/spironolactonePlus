@@ -4,6 +4,7 @@ set -u
 cd "$(dirname "$0")/.."
 pass=0; fail=0
 for t in tests/test_*.sh; do
+    [ -e "$t" ] || continue
     echo "=== $t ==="
     if bash "$t"; then pass=$((pass+1)); else fail=$((fail+1)); echo "FAILED: $t"; fi
 done

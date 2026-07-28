@@ -32,5 +32,17 @@ rm -rf tests/tmp
 # die / log / warn exist and die exits nonzero
 ( die "boom" ) 2>/dev/null; check "die exits nonzero" 1 $?
 
+# run_timeout log capture path
+setup_log test_common
+run_timeout 5 echo capture_check_marker
+grep -q capture_check_marker "$LOG_FILE"; check "run_timeout writes to LOG_FILE" 0 $?
+
+# stale LOG_FILE: command still runs
+LOG_FILE="/nonexistent-dir-$$/x.log"
+out=$(run_timeout 5 echo still_runs); rc=$?
+check "stale LOG_FILE still runs command (rc)" 0 $?
+printf '%s' "$out" | grep -q still_runs; check "stale LOG_FILE output visible" 0 $?
+LOG_FILE=""
+
 if [ "$fails" -gt 0 ]; then echo "test_common: $fails FAILURES"; exit 1; fi
 echo "test_common: all pass"
