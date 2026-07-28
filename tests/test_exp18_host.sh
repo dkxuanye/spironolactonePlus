@@ -54,5 +54,20 @@ v=$(printf '[exp18] VERDICT: FLOW_BROKEN gigalocker-init rc=1\n' | awk '/VERDICT
 v=$(printf '[exp18] mount failed rc=75: /dev/disk1s2 -> /mnt2\n' | awk '/VERDICT:/{print $3; exit}')
 [ -z "$v" ] && echo "ok: no verdict line yields empty" || note_fail "phantom verdict: got [$v]"
 
+# ich-18.7.9 alt boot path: JSON valid, files resolvable through symlinks, dry-run works
+J="bootchain/ich-18.7.9/boot_order.json"
+if [ -f "$J" ]; then
+    Darwin/jq -e '.sequence | length == 12' "$J" >/dev/null \
+        && echo "ok: ich json 12 steps" || note_fail "ich json step count"
+    Darwin/jq -r '.sequence[] | select(.name=="RestoreSEP") | .irecv_command' "$J" | grep -qx sepfirmware \
+        && echo "ok: ich json uses sepfirmware (ICH convention)" || note_fail "ich json sep command"
+    out=$(bash ./spiro.sh boot bootchain/ich-18.7.9 --dry-run 2>&1)
+    rc=$?
+    [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'DRYRUN:.*bootx' \
+        && echo "ok: spiro dry-run ich chain" || note_fail "spiro dry-run ich (rc=$rc)"
+else
+    note_fail "bootchain/ich-18.7.9/boot_order.json missing"
+fi
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"

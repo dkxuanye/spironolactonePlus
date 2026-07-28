@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "sequence": [
+    {"action": "usbliter8_boot", "filename": "iBoot.patched.bin", "send_order": 0, "sleep_after": 4},
+    {"action": "component", "name": "RestoreSEP", "filename": "sep-firmware.img4", "irecv_command": "sepfirmware", "send_order": 1},
+    {"action": "component", "name": "DeviceTree", "filename": "devicetree.img4", "irecv_command": "devicetree", "send_order": 2},
+    {"action": "component", "name": "RestoreTrustCache", "filename": "trustcache.img4", "irecv_command": "firmware", "send_order": 3},
+    {"action": "component", "name": "RestoreRamDisk", "filename": "ramdisk.img4", "irecv_command": "ramdisk", "send_order": 4, "sleep_after": 2},
+    {"action": "component", "name": "AOP", "filename": "AOP.img4", "irecv_command": "firmware", "send_order": 5},
+    {"action": "component", "name": "ANE", "filename": "ANE.img4", "irecv_command": "firmware", "send_order": 6},
+    {"action": "component", "name": "AVE", "filename": "AVE.img4", "irecv_command": "firmware", "send_order": 7},
+    {"action": "component", "name": "ISP", "filename": "ISP.img4", "irecv_command": "firmware", "send_order": 8},
+    {"action": "component", "name": "GFX", "filename": "GFX.img4", "irecv_command": "firmware", "send_order": 9},
+    {"action": "component", "name": "SIO", "filename": "SIO.img4", "irecv_command": "firmware", "send_order": 10},
+    {"action": "component", "name": "RestoreKernelCache", "filename": "kernelcache.img4", "irecv_command": "bootx", "send_order": 11}
+  ]
+}
