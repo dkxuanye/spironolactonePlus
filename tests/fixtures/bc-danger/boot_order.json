@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "sequence": [
+    {"action": "command", "command": "setenv boot-args rd=md0 nand-enable-reformat=1", "send_order": 0}
+  ]
+}
