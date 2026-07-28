@@ -46,7 +46,7 @@ LOG_FILE=""
 
 # lib/common.sh must source cleanly under zsh too (consumers may run shebang-less)
 zshout=$(zsh -c 'set -u; . lib/common.sh; printf "%s" "$SPIRO_ROOT"' 2>/dev/null); zrc=$?
-check "lib/common.sh sources under zsh" 0 $?
+check "lib/common.sh sources under zsh" 0 "$zrc"
 printf '%s' "$zshout" | grep -q "$(pwd)"; check "SPIRO_ROOT correct under zsh" 0 $?
 
 if [ "$fails" -gt 0 ]; then echo "test_common: $fails FAILURES"; exit 1; fi
