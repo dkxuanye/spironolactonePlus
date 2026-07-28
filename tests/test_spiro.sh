@@ -10,9 +10,15 @@ BK="/tmp/boot_order_backup.$$.json"
 trap '[ -f "$BK" ] && mv "$BK" "$BK_TARGET"' EXIT
 
 # 1) JSON path vs legacy fallback: dry-run sequences must be identical (both chains)
+# note: concurrent same-chain runs may false-FAIL (JSON moved away by the other run); BK is $$-unique so restores never cross-contaminate
 for CHAIN in n841ap-14.4.2-18D70-ramdisk n841ap---ramdisk; do
     JSON="bootchain/$CHAIN/boot_order.json"
     [ -f "$JSON" ] || { note_fail "$CHAIN: boot_order.json missing"; continue; }
+    if [ ! -s "bootchain/$CHAIN/iBoot.patched.bin" ] || [ ! -s "bootchain/$CHAIN/kernelcache.img4" ] || \
+       find "bootchain/$CHAIN" -maxdepth 1 -name '*.img4' -size 0 -print -quit | grep -q .; then
+        echo "SKIP: $CHAIN payloads absent or 0-byte (rebuild the chain with makebootfiles.sh)"
+        continue
+    fi
     out_json=$(bash ./spiro.sh boot "$CHAIN" --dry-run 2>/dev/null | grep '^DRYRUN:')
     BK_TARGET="$JSON"
     mv "$JSON" "$BK"
