@@ -7,10 +7,15 @@ set -u
 oscheck="${SPIRO_OSCHECK:-$(uname)}"
 
 start_proxy() {
-    if ! lsof -nP -iTCP:2222 -sTCP:LISTEN >/dev/null 2>&1; then
-        "$oscheck"/iproxy 2222 22 &>/dev/null &
-        sleep 1
+    if lsof -nP -iTCP:2222 -sTCP:LISTEN 2>/dev/null | grep -q iproxy; then
+        return 0
     fi
+    if lsof -nP -iTCP:2222 -sTCP:LISTEN >/dev/null 2>&1; then
+        echo "warning: port 2222 is held by a non-iproxy process; ssh may fail" >&2
+        return 0
+    fi
+    "$oscheck"/iproxy 2222 22 &>/dev/null &
+    sleep 1
 }
 
 case "${1:-}" in

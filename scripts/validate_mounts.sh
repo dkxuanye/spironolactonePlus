@@ -14,8 +14,9 @@ wrn(){ printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; warn=$((warn+1)); }
 
 remote(){ "${SSH[@]}" "$1" 2>/dev/null; }
 
+# NOTE: paths passed here must be single-quote-safe literals (no ' in path)
 check_path() { # check_path <test-flag> <path> <label> <fail|warn>
-    if remote "test $1 '$2' && echo yes" | grep -q yes; then
+    if remote "test $1 '$2' && echo yes" | grep -qx yes; then
         ok "$3: $2"
     elif [ "${4:-fail}" = warn ]; then
         wrn "$3 missing: $2"
@@ -25,7 +26,7 @@ check_path() { # check_path <test-flag> <path> <label> <fail|warn>
 }
 
 echo "=== Spironolactone mount validator ==="
-if ! remote "echo ssh_ok" | grep -q ssh_ok; then
+if ! remote "echo ssh_ok" | grep -qx ssh_ok; then
     bad "SSH not reachable (boot the ramdisk and run ./ssh.sh first)"
     echo "RESULT: FAIL"
     exit 1
@@ -33,7 +34,7 @@ fi
 ok "SSH reachable"
 
 check_path -d /mnt1/usr/standalone/firmware "System(/mnt1)" fail
-if remote "test -e /mnt6/active && echo yes" | grep -q yes; then
+if remote "test -e /mnt6/active && echo yes" | grep -qx yes; then
     ok "Preboot(/mnt6): active present"
 elif remote "ls /mnt6 2>/dev/null | grep -E '^[0-9A-Fa-f]{40,}' | head -1" | grep -q .; then
     wrn "Preboot(/mnt6): no active file, but hash dir present"
