@@ -20,6 +20,7 @@ done
 [ -f resources/mount_experiment_18.sh ]; chk "device experiment script" $?
 [ -x scripts/experiment_18x_mount.sh ]; chk "host orchestrator" $?
 [ -f bootchain/ich-18.7.9/boot_order.json ]; chk "spiro alt-path JSON" $?
+[ -e bootchain/ich-18.7.9/kernelcache.img4 ]; chk "spiro alt-path symlinks resolve" $?
 for t in iproxy sshpass irecovery jq; do
     [ -x "$oscheck/$t" ]; chk "tool: $t" $?
 done
