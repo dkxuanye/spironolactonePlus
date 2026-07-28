@@ -22,6 +22,10 @@ Q_TEXT="$(query_device || true)"
 cpid="$(get_field "$Q_TEXT" CPID)"
 export option1="${1:-}"
 export option2="${2:-}"
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    echo "usage: $0 <version|ipsw-url> <fwkey.json> [--type ramdisk|dualboot|downgrade] [--bootargs verbose|serial|neither] [--dualboot-disk disk0s1sN] [--im4m path]"
+    exit 0
+fi
 boardconfig="$(get_field "$Q_TEXT" MODEL)"
 replace="$boardconfig"
 deviceid="$(get_field "$Q_TEXT" PRODUCT)"

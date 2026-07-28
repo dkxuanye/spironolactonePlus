@@ -67,5 +67,10 @@ seq_names=$(Darwin/jq -r '[.sequence[] | (.name // .action)] | join(",")' "$TEST
 [ "$seq_names" = "usbliter8_boot,RestoreSEP,DeviceTree,RestoreRamDisk,RestoreTrustCache,AOP,ANE,AVE,ISP,GFX,SIO,RestoreKernelCache" ] \
     && echo "ok: sequence order matches legacy" || { echo "FAIL: sequence order: $seq_names"; fails=$((fails+1)); }
 
+# --help prints usage and exits 0 without needing a device
+out4=$(SPIRO_OSCHECK=tests/mockbin bash ./makebootfiles.sh --help </dev/null 2>&1)
+rc4=$?
+[ "$rc4" -eq 0 ] && printf '%s' "$out4" | grep -q "usage:" && echo "ok: --help prints usage" || { echo "FAIL: --help (rc=$rc4)"; fails=$((fails+1)); }
+
 if [ "$fails" -gt 0 ]; then echo "test_makeboot_args: $fails FAILURES"; exit 1; fi
 echo "test_makeboot_args: all pass"
