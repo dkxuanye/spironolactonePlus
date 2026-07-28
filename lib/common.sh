@@ -6,7 +6,7 @@ log()  { printf '\033[1;36m[+] %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31m[-] %s\033[0m\n' "$*" >&2; exit 1; }
 
-SPIRO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+SPIRO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd -P)"
 
 LOG_FILE=""
 setup_log() {

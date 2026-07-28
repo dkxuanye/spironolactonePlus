@@ -15,10 +15,9 @@ legacy() { # legacy <manifest> <index> <component>
     /usr/bin/plutil -extract "BuildIdentities"."$2"."Manifest"."$3"."Info"."Path" xml1 -o - "$1" | grep '<string>' | cut -d\> -f2 | cut -d\< -f1 | head -1
 }
 
-# new helper (sourced from makebootfiles.sh via extract; define here until Task 3 lands)
-if ! type bm_path >/dev/null 2>&1; then
-    bm_path() { /usr/bin/plutil -extract "BuildIdentities.$2.Manifest.$3.Info.Path" xml1 -o - "$1" | grep '<string>' | cut -d\> -f2 | cut -d\< -f1 | head -1; }
-fi
+# exercise the REAL bm_path extracted from makebootfiles.sh
+eval "$(sed -n '/^bm_path()/,/^}/p' makebootfiles.sh)"
+type bm_path >/dev/null 2>&1 || { echo "FAIL: could not extract bm_path from makebootfiles.sh"; exit 1; }
 
 for comp in AOP ANE AVE GFX ISP SIO SEP RestoreRamDisk OS; do
     check_eq "bm_path idx0 $comp" "$(legacy "$BM" 0 "$comp")" "$(bm_path "$BM" 0 "$comp")"

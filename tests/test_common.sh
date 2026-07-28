@@ -44,5 +44,10 @@ check "stale LOG_FILE still runs command (rc)" 0 $?
 printf '%s' "$out" | grep -q still_runs; check "stale LOG_FILE output visible" 0 $?
 LOG_FILE=""
 
+# lib/common.sh must source cleanly under zsh too (consumers may run shebang-less)
+zshout=$(zsh -c 'set -u; . lib/common.sh; printf "%s" "$SPIRO_ROOT"' 2>/dev/null); zrc=$?
+check "lib/common.sh sources under zsh" 0 $?
+printf '%s' "$zshout" | grep -q "$(pwd)"; check "SPIRO_ROOT correct under zsh" 0 $?
+
 if [ "$fails" -gt 0 ]; then echo "test_common: $fails FAILURES"; exit 1; fi
 echo "test_common: all pass"
