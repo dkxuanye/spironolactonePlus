@@ -2,7 +2,7 @@
 # experiment_18x_mount.sh - Phase 0 host orchestrator: boot 18.7.9 chain, run mount experiment, collect verdict.
 # Usage:
 #   scripts/experiment_18x_mount.sh --mode ich-safe|unlockcd|unlockcd-chain-sep [--boot ich|spiro] [--no-reboot] [--dry-run]
-# Env: ICH_ROOT (default ~/Desktop/ICH_A12_plus_Ramdisk), CHAIN_DIR, SSH_PORT, SPIRO_IRECV_TIMEOUT
+# Env: ICH_ROOT (default ~/Desktop/ICH_A12_plus_Ramdisk), CHAIN_DIR, SSH_PORT
 set -u
 oscheck="${SPIRO_OSCHECK:-$(uname)}"
 ICH_ROOT="${ICH_ROOT:-$HOME/Desktop/ICH_A12_plus_Ramdisk}"
@@ -104,7 +104,7 @@ if [ "$MODE" = "unlockcd-chain-sep" ]; then
 fi
 
 log "run experiment: --$MODE"
-out=$(run_timeout 240 ssh_run "sh /var/root/mount_experiment_18.sh --$MODE" 2>&1)
+out=$(LOG_FILE="" run_timeout 240 ssh_run "sh /var/root/mount_experiment_18.sh --$MODE" 2>&1)
 erc=$?
 printf '%s\n' "$out" | tee -a "$LOG_FILE"
 verdict=$(printf '%s\n' "$out" | awk '/VERDICT:/{print $2; exit}')

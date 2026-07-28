@@ -36,5 +36,15 @@ rc=$?
     && echo "ok: dry-run plans steps" || note_fail "dry-run (rc=$rc): $out"
 rm -rf "$FAKE"
 
+# regression: run_timeout inside $() must still capture child output when LOG_FILE is set
+. lib/common.sh
+setup_log test_exp18_capture
+fake_exp(){ echo "[exp18] VERDICT: MOUNTED"; }
+capout=$(LOG_FILE="" run_timeout 5 fake_exp 2>&1)
+printf '%s' "$capout" | grep -q "VERDICT: MOUNTED" \
+    && echo "ok: capture works with LOG_FILE cleared" || note_fail "capture empty with LOG_FILE set"
+[ -n "$LOG_FILE" ] && echo "ok: LOG_FILE restored after scoped clear" || note_fail "LOG_FILE clobbered"
+LOG_FILE=""
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"
