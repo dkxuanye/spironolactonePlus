@@ -50,15 +50,17 @@ read -p "Do you want serial boot, verbose boot, or neither
 Type 'verbose', 'serial' or 'neither':" BOOTARGOPTION
 ../"$oscheck"/pzb -g BuildManifest.plist "$ipswurl"
 ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."AOP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-aopfilenametest=$(ls aop*)
+# 按 DeviceClass 精确匹配本机 boardconfig 对应的 BuildIdentity，
+# 不要靠 aop 文件名猜 index（beta 清单的身份顺序和正式版不一样，
+# 例如 14.0b5 里 n841ap 是 index 3 而不是 2）
 bmindex=0
-if [[ "$aopfilenametest" == *11* && "$cpid" == "0x8030" ]]; then
-    bmindex=3
-elif [[ "$aopfilenametest" == *12* && "$cpid" == "0x8020" ]]; then
-    bmindex=2
-else
-:
-fi
+for i in 0 1 2 3; do
+    dc=$(/usr/bin/plutil -extract "BuildIdentities".$i."Info"."DeviceClass" raw -o - BuildManifest.plist 2>/dev/null)
+    if [ "$dc" = "$boardconfig" ]; then
+        bmindex=$i
+        break
+    fi
+done
 #echo "$bmindex"
 if [[ "$boardconfig" == n104ap ]]; then
     ../"$oscheck"/pzb -g Firmware/dfu/iBEC.n104.RELEASE.im4p "$ipswurl"
@@ -72,6 +74,7 @@ fi
 ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."GFX"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
 ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ISP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
 ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SIO"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
+../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SEP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
 if [[ "$USEROPTION" == ramdisk ]]; then
     ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
     ../"$oscheck"/pzb -g Firmware/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)".trustcache "$ipswurl"
@@ -165,6 +168,7 @@ $oscheck/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{prin
 "$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ISP"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/ISP.img4 -M "$IM4MPath"
 "$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."GFX"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/GFX.img4 -M "$IM4MPath"
 "$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SIO"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f2-)" -o bootchain/$filedir/SIO.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SEP"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/sep-firmware.img4 -M "$IM4MPath"
 
 
 cp work/iBoot.patched bootchain/$filedir/iBoot.patched.bin

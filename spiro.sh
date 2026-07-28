@@ -16,12 +16,14 @@ if [ "$option" = boot ]; then
         sleep 4
       #  "$oscheck"/irecovery -f bootchain/"$bootchain"/logo.img4
       #  "$oscheck"/irecovery -c "setpicture 0x1"
-      # SEP loading is disabled until further work
-      #  if [[ -e bootchain/$bootchain/sep-firmware.img4 ]]; then
-      #      echo "Loading SEP"
-     #       "$oscheck"/irecovery -f bootchain/"$bootchain"/sep-firmware.img4
-     #       "$oscheck"/irecovery -c sepfirmware
-     #   fi
+        # SEP 加载参照 ICH_A12_plus_Ramdisk issue #5 的已验证成功配置:
+        # rsep(RestoreSEP)类型 img4 + rsepfirmware 命令, iBoot 之后、devicetree 之前;
+        # ramdisk 内禁止再跑任何 seputil(会打崩 SEPOS), 直接裸 mount_apfs
+        if [[ -e bootchain/$bootchain/sep-firmware.img4 ]]; then
+            echo "Loading SEP"
+            "$oscheck"/irecovery -f bootchain/"$bootchain"/sep-firmware.img4
+            "$oscheck"/irecovery -c rsepfirmware
+        fi
         echo "Loading Devicetree!"
         "$oscheck"/irecovery -f bootchain/"$bootchain"/devicetree.img4
         "$oscheck"/irecovery -c "devicetree"
@@ -29,7 +31,7 @@ if [ "$option" = boot ]; then
             echo "Loading Ramdisk!"
             "$oscheck"/irecovery -f bootchain/"$bootchain"/ramdisk.img4
             sleep 2
-            irecovery -c ramdisk
+            "$oscheck"/irecovery -c ramdisk
         fi
         echo "Loading trustcache!"
         "$oscheck"/irecovery -f bootchain/"$bootchain"/trustcache.img4
