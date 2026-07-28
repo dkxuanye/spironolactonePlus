@@ -36,5 +36,10 @@ check_eq "map_product_to_model iPhone11,8" "iPhoneXR" "$(map_product_to_model iP
 check_eq "map_product_to_model by hw" "iPhoneXR" "$(map_product_to_model "" n841ap "")"
 check_eq "map_product_to_model unknown rc1" "" "$(map_product_to_model Foo1,1 zzz zz)"
 
+check_eq "get_field value with colon" "http://example.com:8080/x" "$(get_field "NAME: http://example.com:8080/x" NAME)"
+detect_iboot_version "no iboot here" >/dev/null 2>&1
+[ $? -ne 0 ] && echo "ok: detect_iboot_version no-match rc nonzero" || { echo "FAIL: detect_iboot_version no-match rc"; fails=$((fails+1)); }
+check_eq "detect_iboot_version no-match empty" "" "$(detect_iboot_version "no iboot here" || true)"
+
 if [ "$fails" -gt 0 ]; then echo "test_device_lib: $fails FAILURES"; exit 1; fi
 echo "test_device_lib: all pass"

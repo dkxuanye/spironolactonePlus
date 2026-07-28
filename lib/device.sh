@@ -2,6 +2,7 @@
 # lib/device.sh - device query/detection helpers.
 # Adapted from research/unlockcd/scripts/start.sh (proven units).
 # Requires env: IRECOVERY (path), JQ (path), IBOOT_MAPPING (json path).
+# Consumers should set JQ to an absolute path (e.g. "$SPIRO_ROOT/Darwin/jq") when not running from the repo root.
 
 query_device() {
     local out rc
@@ -11,8 +12,8 @@ query_device() {
 }
 
 get_field() {
-    # get_field <query_text> <key>
-    printf '%s\n' "$1" | awk -F'[:=]' -v k="$2" 'toupper($1)==toupper(k){sub(/^[ \t]+/,"",$2); sub(/[ \t\r]+$/, "", $2); print $2; exit}'
+    # get_field <query_text> <key> — split on the FIRST ':' or '=' only
+    printf '%s\n' "$1" | awk -v k="$2" '{line=$0; i=index(line,":"); if(i==0) i=index(line,"="); if(i==0) next; key=substr(line,1,i-1); val=substr(line,i+1); if(toupper(key)==toupper(k)){sub(/^[ \t]+/,"",val); sub(/[ \t\r]+$/,"",val); print val; exit}}'
 }
 
 normalize_hex() {
@@ -26,7 +27,10 @@ is_pwned_dfu() {
 }
 
 detect_iboot_version() {
-    printf '%s\n' "$1" | grep -Eo 'iBoot-[0-9A-Za-z_.~:-]+' | head -n 1 || true
+    local v
+    v="$(printf '%s\n' "$1" | grep -Eo 'iBoot-[0-9A-Za-z_.~:-]+' | head -n 1)"
+    [ -n "$v" ] || return 1
+    printf '%s\n' "$v"
 }
 
 map_iboot_to_ios() {
