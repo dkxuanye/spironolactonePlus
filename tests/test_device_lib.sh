@@ -30,6 +30,8 @@ check_eq "normalize_hex 0X12" "12" "$(normalize_hex 0X12)"
 check_eq "detect_iboot_version" "iBoot-6723.0.48~25" "$(detect_iboot_version "$Q")"
 check_eq "map_iboot_to_ios 14.0" "14.0" "$(map_iboot_to_ios "iBoot-6723.0.48~25")"
 check_eq "map_iboot_to_ios unknown empty" "" "$(map_iboot_to_ios "iBoot-9999.9.9~9")"
+map_iboot_to_ios "iBoot-9999.9.9~9" >/dev/null 2>&1
+[ $? -ne 0 ] && echo "ok: map_iboot_to_ios unknown rc nonzero" || { echo "FAIL: map_iboot_to_ios unknown rc"; fails=$((fails+1)); }
 check_eq "map_product_to_model iPhone11,8" "iPhoneXR" "$(map_product_to_model iPhone11,8 n841ap 0e)"
 check_eq "map_product_to_model by hw" "iPhoneXR" "$(map_product_to_model "" n841ap "")"
 check_eq "map_product_to_model unknown rc1" "" "$(map_product_to_model Foo1,1 zzz zz)"

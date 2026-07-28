@@ -31,7 +31,10 @@ detect_iboot_version() {
 
 map_iboot_to_ios() {
     [ -n "$1" ] || return 1
-    "$JQ" -r --arg v "$1" '.mappings[] | select(.iboot_version==$v) | .ios_version' "$IBOOT_MAPPING" 2>/dev/null | head -n 1
+    local v
+    v="$("$JQ" -r --arg v "$1" '.mappings[] | select(.iboot_version==$v) | .ios_version' "$IBOOT_MAPPING" 2>/dev/null | head -n 1)"
+    [ -n "$v" ] || return 1
+    printf '%s\n' "$v"
 }
 
 map_product_to_model() {
