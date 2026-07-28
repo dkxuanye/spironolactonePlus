@@ -56,7 +56,9 @@ v=$(printf '[exp18] mount failed rc=75: /dev/disk1s2 -> /mnt2\n' | awk '/VERDICT
 
 # ich-18.7.9 alt boot path: JSON valid, files resolvable through symlinks, dry-run works
 J="bootchain/ich-18.7.9/boot_order.json"
-if [ -f "$J" ]; then
+if [ ! -e bootchain/ich-18.7.9/kernelcache.img4 ]; then
+    echo "SKIP: ICH symlinks absent (fresh clone)"
+elif [ -f "$J" ]; then
     Darwin/jq -e '.sequence | length == 12' "$J" >/dev/null \
         && echo "ok: ich json 12 steps" || note_fail "ich json step count"
     Darwin/jq -r '.sequence[] | select(.name=="RestoreSEP") | .irecv_command' "$J" | grep -qx sepfirmware \
@@ -68,6 +70,18 @@ if [ -f "$J" ]; then
 else
     note_fail "bootchain/ich-18.7.9/boot_order.json missing"
 fi
+
+# spiro boot without boot_order.json in chain dir dies (no silent legacy on 18.x)
+FAKE=/tmp/fake-chain-$$
+mkdir -p "$FAKE"
+for f in iBoot.patched.bin sep-firmware.img4 devicetree.img4 trustcache.img4 ramdisk.img4 kernelcache.img4 AOP.img4 ANE.img4 AVE.img4 ISP.img4 GFX.img4 SIO.img4; do
+    printf 'x' > "$FAKE/$f"
+done
+out=$(CHAIN_DIR="$FAKE" bash scripts/experiment_18x_mount.sh --mode ich-safe --boot spiro --dry-run 2>&1)
+rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "boot_order.json" \
+    && echo "ok: spiro boot requires boot_order.json" || note_fail "spiro json requirement (rc=$rc): $out"
+rm -rf "$FAKE"
 
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"

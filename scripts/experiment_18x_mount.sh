@@ -6,7 +6,6 @@
 set -u
 oscheck="${SPIRO_OSCHECK:-$(uname)}"
 ICH_ROOT="${ICH_ROOT:-$HOME/Desktop/ICH_A12_plus_Ramdisk}"
-CHAIN_DIR="${CHAIN_DIR:-$ICH_ROOT/bootchain/n841ap-18.7.9-22H355-ramdisk}"
 DEVICE_SCRIPT="resources/mount_experiment_18.sh"
 SSH_PORT="${SSH_PORT:-2222}"
 SSH_PASS=alpine
@@ -35,6 +34,15 @@ done
 case "$MODE" in ich-safe|unlockcd|unlockcd-chain-sep) ;; *) die "invalid --mode: $MODE";; esac
 case "$BOOT" in ich|spiro) ;; *) die "invalid --boot: $BOOT";; esac
 
+# boot-aware chain default: spiro boots the repo-local ich-18.7.9 symlink dir (with boot_order.json)
+if [ -z "${CHAIN_DIR:-}" ]; then
+    if [ "$BOOT" = spiro ]; then
+        CHAIN_DIR="bootchain/ich-18.7.9"
+    else
+        CHAIN_DIR="$ICH_ROOT/bootchain/n841ap-18.7.9-22H355-ramdisk"
+    fi
+fi
+
 # --- preflight ---
 [ -d "$CHAIN_DIR" ] || die "chain dir not found: $CHAIN_DIR"
 [ -f "$DEVICE_SCRIPT" ] || die "device script not found: $DEVICE_SCRIPT"
@@ -45,6 +53,11 @@ done
 for t in iproxy sshpass irecovery; do
     [ -x "$oscheck/$t" ] || die "tool missing: $oscheck/$t"
 done
+# spiro path must never fall back to the legacy built-in sequence on 18.x;
+# checked before the DRY block so --dry-run catches it too
+if [ "$BOOT" = spiro ]; then
+    [ -f "$CHAIN_DIR/boot_order.json" ] || die "spiro boot requires $CHAIN_DIR/boot_order.json (legacy fallback is only valid for 14.x chains)"
+fi
 log "preflight ok: chain=$CHAIN_DIR mode=$MODE boot=$BOOT"
 
 if [ "$DRY" = 1 ]; then
