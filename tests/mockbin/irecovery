@@ -1,0 +1,15 @@
+#!/bin/bash
+# mock irecovery: answers -q with a fixture, ignores everything else
+if [ "${1:-}" = "-q" ]; then
+    cat <<'EOF'
+MODE: DFU
+CPID: 0x8020
+BDID: 0x0e
+ECID: 0x1111111111111111
+PRODUCT: iPhone11,8
+MODEL: n841ap
+PWND: usbliter8
+EOF
+    exit 0
+fi
+exit 0

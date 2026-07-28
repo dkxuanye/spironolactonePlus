@@ -1,0 +1,5 @@
+#!/bin/bash
+echo "MOCK $(basename "$0") $*" >> "${MOCKBIN_LOG:-/tmp/mockbin_calls.log}"
+# honor -o <out> so later steps find files
+while [ "$#" -gt 0 ]; do [ "$1" = "-o" ] && { : > "$2" 2>/dev/null; break; }; shift; done
+exit 0

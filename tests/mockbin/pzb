@@ -1,0 +1,5 @@
+#!/bin/bash
+# mock pzb: log the call, create the requested file (basename) so the script can proceed
+echo "MOCKPBZ $*" >> "${MOCKBIN_LOG:-/tmp/mockbin_calls.log}"
+[ -n "${2:-}" ] && mkdir -p "$(dirname "$2")" 2>/dev/null && : > "$2" 2>/dev/null
+exit 0

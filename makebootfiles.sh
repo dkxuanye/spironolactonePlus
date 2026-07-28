@@ -49,13 +49,47 @@ if [[ -z $ipswurl ]]; then
     echo "Please define the version first!"
     exit
 fi
+# --- non-interactive options (flags override env; prompts only on TTY) ---
+TYPE="${SPIRO_TYPE:-}"
+BOOTARGOPT="${SPIRO_BOOTARGS:-}"
+DUALBOOT_DISK="${SPIRO_DUALBOOT_DISK:-}"
+IM4M_ARG="${SPIRO_IM4M:-}"
+if [ "$#" -gt 2 ]; then
+    shift 2
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --type) TYPE="${2:?--type needs value}"; shift 2;;
+            --bootargs) BOOTARGOPT="${2:?--bootargs needs value}"; shift 2;;
+            --dualboot-disk) DUALBOOT_DISK="${2:?--dualboot-disk needs value}"; shift 2;;
+            --im4m) IM4M_ARG="${2:?--im4m needs value}"; shift 2;;
+            -h|--help)
+                echo "usage: $0 <version|ipsw-url> <fwkey.json> [--type ramdisk|dualboot|downgrade] [--bootargs verbose|serial|neither] [--dualboot-disk disk0s1sN] [--im4m path]"
+                exit 0;;
+            *) die "unknown option: $1";;
+        esac
+    done
+fi
 mkdir work
 cd work
-read -p "Are you going to be dualbooting, tether downgrading, or making a ramdisk: 
-Type 'dualboot', 'downgrade' or 'ramdisk':" USEROPTION
+if [ -z "$TYPE" ]; then
+    if [ -t 0 ]; then
+        read -p "Are you going to be dualbooting, tether downgrading, or making a ramdisk:
+Type 'dualboot', 'downgrade' or 'ramdisk':" TYPE
+    else
+        die "missing --type (ramdisk|dualboot|downgrade) and stdin is not a TTY"
+    fi
+fi
+USEROPTION="$TYPE"
 
-read -p "Do you want serial boot, verbose boot, or neither
-Type 'verbose', 'serial' or 'neither':" BOOTARGOPTION
+if [ -z "$BOOTARGOPT" ]; then
+    if [ -t 0 ]; then
+        read -p "Do you want serial boot, verbose boot, or neither
+Type 'verbose', 'serial' or 'neither':" BOOTARGOPT
+    else
+        die "missing --bootargs (verbose|serial|neither) and stdin is not a TTY"
+    fi
+fi
+BOOTARGOPTION="$BOOTARGOPT"
 ../"$oscheck"/pzb -g BuildManifest.plist "$ipswurl"
 ../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist 0 AOP)" "$ipswurl"
 # 按 DeviceClass 精确匹配本机 boardconfig 对应的 BuildIdentity，
@@ -120,7 +154,14 @@ elif [[ "$USEROPTION" == downgrade ]]; then
         "$oscheck"/kairos work/iBoot.prepatched work/iBoot.patched -b "wdt=-1"
     fi
 else
-    read -p "What is the disk0s1s number of your second iOS partition, such as disk0s1s8:" dualbootdisk
+    if [ -z "$DUALBOOT_DISK" ]; then
+        if [ -t 0 ]; then
+            read -p "What is the disk0s1s number of your second iOS partition, such as disk0s1s8:" DUALBOOT_DISK
+        else
+            die "missing --dualboot-disk and stdin is not a TTY"
+        fi
+    fi
+    dualbootdisk="$DUALBOOT_DISK"
     if [[ "$BOOTARGOPTION" == verbose ]]; then
         "$oscheck"/kairos work/iBoot.prepatched work/iBoot.patched -b "rd="$dualbootdisk" -v debug=0x2014e wdt=-1"
     elif [[ "$BOOTARGOPTION" == serial ]]; then
@@ -143,7 +184,11 @@ if [[ "$USEROPTION" == ramdisk ]]; then
 else
 :
 fi
-filedir="$boardconfig-$version-$buildid-$USEROPTION"
+if [ -n "$buildid" ]; then
+    filedir="$boardconfig-$version-$buildid-$USEROPTION"
+else
+    filedir="$boardconfig-$version-$USEROPTION"
+fi
 mkdir -p bootchain/"$filedir"
 if [[ "$USEROPTION" == ramdisk ]]; then
    if [[ $cpid == 0x8020 ]]; then
@@ -152,7 +197,14 @@ if [[ "$USEROPTION" == ramdisk ]]; then
     IM4MPath="resources/IM4M_0x8030"
     fi
 else
-    read -p "Please drag or type a path to your IM4M/APTicket.der file: " IM4MPath
+    if [ -z "$IM4M_ARG" ]; then
+        if [ -t 0 ]; then
+            read -p "Please drag or type a path to your IM4M/APTicket.der file: " IM4M_ARG
+        else
+            die "missing --im4m and stdin is not a TTY"
+        fi
+    fi
+    IM4MPath="$IM4M_ARG"
 fi
 if [[ "$USEROPTION" == dualboot ]]; then
     $oscheck/img4 -i work/DeviceTree.$boardconfig.im4p -o work/devicetree.bin
@@ -180,5 +232,25 @@ $oscheck/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{prin
 
 
 cp work/iBoot.patched bootchain/$filedir/iBoot.patched.bin
+
+# --- emit boot_order.json (single source of truth for ./spiro.sh boot) ---
+{
+    items=()
+    items+=('{"action":"usbliter8_boot","filename":"iBoot.patched.bin","sleep_after":4}')
+    if [ -f bootchain/"$filedir"/sep-firmware.img4 ]; then
+        items+=('{"action":"component","name":"RestoreSEP","filename":"sep-firmware.img4","irecv_command":"rsepfirmware"}')
+    fi
+    items+=('{"action":"component","name":"DeviceTree","filename":"devicetree.img4","irecv_command":"devicetree"}')
+    if [[ "$USEROPTION" == ramdisk ]]; then
+        items+=('{"action":"component","name":"RestoreRamDisk","filename":"ramdisk.img4","irecv_command":"ramdisk","sleep_after":2}')
+    fi
+    items+=('{"action":"component","name":"RestoreTrustCache","filename":"trustcache.img4","irecv_command":"firmware"}')
+    for c in AOP ANE AVE ISP GFX SIO; do
+        items+=("{\"action\":\"component\",\"name\":\"$c\",\"filename\":\"$c.img4\",\"irecv_command\":\"firmware\"}")
+    done
+    items+=('{"action":"component","name":"RestoreKernelCache","filename":"kernelcache.img4","irecv_command":"bootx"}')
+    printf '%s\n' "${items[@]}" | "$oscheck"/jq -s 'to_entries | map(.value + {send_order: .key}) | {version: 1, sequence: .}' > bootchain/"$filedir"/boot_order.json
+}
+echo "boot_order.json written to bootchain/$filedir/"
 
 echo 'To boot, run ./spiro.sh boot '"$filedir"
