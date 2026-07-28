@@ -5,7 +5,7 @@
 #   --unlockcd             gigalocker-init + seputil --load <preboot SEP> + Data mount
 #   --unlockcd-chain-sep   gigalocker-init + seputil --load /var/root/sep-chain.img4 + Data mount
 # Every external call is guarded by a 20s timeout. Verdict: /mnt2/{mobile,root,containers}.
-# Exit codes: 0=MOUNTED 75=NOT_READY 2=ERROR(no SEP/seputil) 76=refused(boot-args) 64=usage
+# Exit codes: 0=MOUNTED 75=NOT_READY 2=ERROR(no SEP/seputil) 4=FLOW_BROKEN(gigalocker-init) 76=refused(boot-args) 64=usage
 # Note: a kernel-wedged seputil yields rc 124 via the guard, but a device panic yields
 # NO output at all — hosts must treat missing VERDICT / ssh failure as panic-or-hang.
 set +e
