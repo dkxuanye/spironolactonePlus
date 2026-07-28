@@ -54,6 +54,9 @@ v=$(printf '[exp18] VERDICT: FLOW_BROKEN gigalocker-init rc=1\n' | awk '/VERDICT
 v=$(printf '[exp18] mount failed rc=75: /dev/disk1s2 -> /mnt2\n' | awk '/VERDICT:/{print $3; exit}')
 [ -z "$v" ] && echo "ok: no verdict line yields empty" || note_fail "phantom verdict: got [$v]"
 
+grep -q 'VERDICT:/{print \$3; exit}' scripts/experiment_18x_mount.sh \
+    && echo "ok: script awk uses \$3 (matches parse tests)" || note_fail "script awk drifted from parse tests"
+
 # ich-18.7.9 alt boot path: JSON valid, files resolvable through symlinks, dry-run works
 J="bootchain/ich-18.7.9/boot_order.json"
 if [ ! -e bootchain/ich-18.7.9/kernelcache.img4 ]; then

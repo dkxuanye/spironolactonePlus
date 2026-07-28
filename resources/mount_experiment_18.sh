@@ -4,7 +4,7 @@
 #   --ich-safe             label-probe mounts + bare Data attempt (control group)
 #   --unlockcd             gigalocker-init + seputil --load <preboot SEP> + Data mount
 #   --unlockcd-chain-sep   gigalocker-init + seputil --load /var/root/sep-chain.img4 + Data mount
-# Every external call is guarded by a 20s timeout. Verdict: /mnt2/{mobile,root,containers}.
+# Heavy calls (mount_apfs, seputil) are guarded by a 20s timeout with bounded reap. Verdict: /mnt2/{mobile,root,containers}.
 # Exit codes: 0=MOUNTED 75=NOT_READY 2=ERROR(no SEP/seputil) 4=FLOW_BROKEN(gigalocker-init) 76=refused(boot-args) 64=usage
 # Note: a kernel-wedged seputil yields rc 124 via the guard, but a device panic yields
 # NO output at all — hosts must treat missing VERDICT / ssh failure as panic-or-hang.
@@ -66,22 +66,26 @@ esac
 cleanup_oblit
 for d in /mnt1 /mnt2 /mnt6 /mnt7; do /bin/mkdir -p "$d" 2>/dev/null; done
 
-SYS=""; PREBOOT=""; XART=""; DATA=""
-for prefix in /dev/disk1s /dev/disk0s1s; do
-    for i in 1 2 3 4 5 6 7 8 9; do
-        dev="${prefix}${i}"
-        [ -e "$dev" ] || continue
-        lab=$(label_of "$dev")
-        [ -n "$lab" ] && log "$dev label=$lab"
-        case "$lab" in
-            System)  [ -z "$SYS" ] && SYS="$dev" ;;
-            Preboot) [ -z "$PREBOOT" ] && PREBOOT="$dev" ;;
-            xART)    [ -z "$XART" ] && XART="$dev" ;;
-            Data)    [ -z "$DATA" ] && DATA="$dev" ;;
-        esac
+probe_volumes(){
+    SYS=""; PREBOOT=""; XART=""; DATA=""
+    for prefix in /dev/disk1s /dev/disk0s1s; do
+        for i in 1 2 3 4 5 6 7 8 9; do
+            dev="${prefix}${i}"
+            [ -e "$dev" ] || continue
+            lab=$(label_of "$dev")
+            [ -n "$lab" ] && log "$dev label=$lab"
+            case "$lab" in
+                System)  [ -z "$SYS" ] && SYS="$dev" ;;
+                Preboot) [ -z "$PREBOOT" ] && PREBOOT="$dev" ;;
+                xART)    [ -z "$XART" ] && XART="$dev" ;;
+                Data)    [ -z "$DATA" ] && DATA="$dev" ;;
+            esac
+        done
     done
-done
-log "resolved sys=${SYS:-N/A} preboot=${PREBOOT:-N/A} xart=${XART:-N/A} data=${DATA:-N/A}"
+    log "resolved sys=${SYS:-N/A} preboot=${PREBOOT:-N/A} xart=${XART:-N/A} data=${DATA:-N/A}"
+}
+
+probe_volumes
 
 mount_one(){
     dev="$1"; mp="$2"
@@ -131,6 +135,10 @@ case "$MODE" in
                 case "$a" in */*|*..*) a="" ;; esac
                 [ -n "$a" ] && SEP="/mnt6/$a/usr/standalone/firmware/sep-firmware.img4"
             fi
+            if [ -z "$SEP" ] || [ ! -f "$SEP" ]; then
+                first=$(/bin/ls /mnt6 2>/dev/null | /usr/bin/grep -E '^[0-9A-Fa-f]{40,}$' | /usr/bin/head -n1)
+                [ -n "$first" ] && SEP="/mnt6/$first/usr/standalone/firmware/sep-firmware.img4"
+            fi
             [ -f "$SEP" ] || SEP=/mnt1/usr/standalone/firmware/sep-firmware.img4
         fi
         if [ ! -f "$SEP" ]; then
@@ -151,6 +159,8 @@ case "$MODE" in
         log "seputil --load $SEP"
         run_bg_timeout 20 "$SEPUTIL" --load "$SEP"
         log "seputil --load rc=$?"
+        log "post-SEP re-probe (Data may only appear after SEP is up)"
+        probe_volumes
         try_data
         rc=$?
         ;;
