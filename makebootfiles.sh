@@ -1,29 +1,34 @@
-#export ipswurl="$1"
-oscheck=$(uname)
-BRANCH=$(git branch --show-current)
+#!/bin/bash
+set -u
+oscheck="${SPIRO_OSCHECK:-$(uname)}"
+BRANCH=$(git branch --show-current 2>/dev/null || true)
 BUILD=$(grep "BUILD" verinfo | cut -d':' -f2)
 VERSION=$(grep "VERSION" verinfo | cut -d':' -f2)
-#Spironolactone-10.1
-BRANCH=$(git branch --show-current)
+
+IRECOVERY="$oscheck"/irecovery
+JQ="$oscheck"/jq
+IBOOT_MAPPING="resources/iboot_mapping.json"
+. lib/common.sh
+. lib/device.sh
+
+bm_path() {
+    # bm_path <manifest> <buildidentity_index> <component> — print Manifest.<component>.Info.Path
+    /usr/bin/plutil -extract "BuildIdentities.$2.Manifest.$3.Info.Path" xml1 -o - "$1" | grep '<string>' | cut -d\> -f2 | cut -d\< -f1 | head -1
+}
 
 echo "Welcome to Spironolactone v"$VERSION" (Build: "$BUILD-$BRANCH")!"
-#export keypage="https://theapplewiki.com/api.php?action=parse&formatversion=2&page="$keypagename"&prop=wikitext&format=json"
-#echo $keypage
 
-#curl -A "SpironolactoneKeyFetch" -s -o ./firmwarekeys.json "$keypage"
-cpid=$("$oscheck"/irecovery -q | grep CPID | sed 's/CPID: //')
-export option1="$1"
-export option2="$2"
+Q_TEXT="$(query_device || true)"
+cpid="$(get_field "$Q_TEXT" CPID)"
+export option1="${1:-}"
+export option2="${2:-}"
+boardconfig="$(get_field "$Q_TEXT" MODEL)"
+replace="$boardconfig"
+deviceid="$(get_field "$Q_TEXT" PRODUCT)"
 if [[ "$option1" == http* ]]; then
     ipswurl="$option1"
     echo $ipswurl
-    boardconfig=$("$oscheck"/irecovery -q | grep MODEL | sed 's/MODEL: //')
-    replace=$("$oscheck"/irecovery -q | grep MODEL | sed 's/MODEL: //')
-    deviceid=$("$oscheck"/irecovery -q | grep PRODUCT | sed 's/PRODUCT: //')
 elif [[ "$option1" =~ ^[0-9.]+$ ]]; then
-    boardconfig=$("$oscheck"/irecovery -q | grep MODEL | sed 's/MODEL: //')
-    replace=$("$oscheck"/irecovery -q | grep MODEL | sed 's/MODEL: //')
-    deviceid=$("$oscheck"/irecovery -q | grep PRODUCT | sed 's/PRODUCT: //')
     ipswurl=$(curl -sL "https://api.ipsw.me/v4/device/$deviceid?type=ipsw" | "$oscheck"/jq '.firmwares | .[] | select(.version=="'$1'")' | "$oscheck"/jq -s '.[0] | .url' --raw-output)
     buildid=$(curl -sL "https://api.ipsw.me/v4/device/$deviceid?type=ipsw" | "$oscheck"/jq '.firmwares | .[] | select(.version=="'$1'")' | "$oscheck"/jq -s '.[0] | .buildid' --raw-output)
     version=$(curl -sL "https://api.ipsw.me/v4/device/$deviceid?type=ipsw" | "$oscheck"/jq '.firmwares | .[] | select(.version=="'$1'")' | "$oscheck"/jq -s '.[0] | .version' --raw-output)
@@ -32,6 +37,9 @@ elif [[ "$option1" =~ ^[0-9.]+$ ]]; then
 else
     echo "Please specify a version or an IPSW URL! (not supported yet)"
 fi
+ipswurl="${ipswurl:-}"
+buildid="${buildid:-}"
+version="${version:-}"
 fwkeyjson=$option2
 if [[ -z $fwkeyjson ]]; then
     echo "Please define the fwkey json!"
@@ -49,7 +57,7 @@ Type 'dualboot', 'downgrade' or 'ramdisk':" USEROPTION
 read -p "Do you want serial boot, verbose boot, or neither
 Type 'verbose', 'serial' or 'neither':" BOOTARGOPTION
 ../"$oscheck"/pzb -g BuildManifest.plist "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."AOP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist 0 AOP)" "$ipswurl"
 # 按 DeviceClass 精确匹配本机 boardconfig 对应的 BuildIdentity，
 # 不要靠 aop 文件名猜 index（beta 清单的身份顺序和正式版不一样，
 # 例如 14.0b5 里 n841ap 是 index 3 而不是 2）
@@ -68,19 +76,19 @@ else
     ../"$oscheck"/pzb -g "$(awk "/""${replace}""/{x=1}x&&/iBEC[.]/{print;exit}" BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" "$ipswurl"
 fi
 ../"$oscheck"/pzb -g "$(awk "/""${replace}""/{x=1}x&&/DeviceTree[.]/{print;exit}" BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."AOP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ANE"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."AVE"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."GFX"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ISP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SIO"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SEP"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" AOP)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" ANE)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" AVE)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" GFX)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" ISP)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" SIO)" "$ipswurl"
+../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist "$bmindex" SEP)" "$ipswurl"
 if [[ "$USEROPTION" == ramdisk ]]; then
-    ../"$oscheck"/pzb -g "$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" "$ipswurl"
-    ../"$oscheck"/pzb -g Firmware/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)".trustcache "$ipswurl"
+    ../"$oscheck"/pzb -g "$(bm_path BuildManifest.plist 0 RestoreRamDisk)" "$ipswurl"
+    ../"$oscheck"/pzb -g Firmware/"$(bm_path BuildManifest.plist 0 RestoreRamDisk)".trustcache "$ipswurl"
     ../"$oscheck"/pzb -g "$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" "$ipswurl"
 else
-    ../"$oscheck"/pzb -g Firmware/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."OS"."Info"."Path" xml1 -o - BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)".trustcache "$ipswurl"
+    ../"$oscheck"/pzb -g Firmware/"$(bm_path BuildManifest.plist 0 OS)".trustcache "$ipswurl"
     ../"$oscheck"/pzb -g "$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" "$ipswurl"
 fi
 cd ..
@@ -122,13 +130,13 @@ else
     fi
 fi
 if [[ "$USEROPTION" == ramdisk ]]; then
-    "$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)" -o work/ramdisk.dmg
+    "$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist 0 RestoreRamDisk)" -o work/ramdisk.dmg
     hdiutil resize -size 210MB work/ramdisk.dmg
     hdiutil attach -mountpoint /tmp/SpironolactoneRD work/ramdisk.dmg -owners off
     "$oscheck"/gtar -x --no-overwrite-dir -f resources/ssh.tar.gz -C /tmp/SpironolactoneRD/
     hdiutil detach -force /tmp/SpironolactoneRD
     hdiutil resize -sectors min work/ramdisk.dmg
-    "$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."RestoreRamDisk"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)".trustcache -o work/trustcache.bin
+    "$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist 0 RestoreRamDisk)".trustcache -o work/trustcache.bin
     mkdir work/sshtar
     $oscheck/gtar -x --no-overwrite-dir -f resources/ssh.tar.gz -C work/sshtar
     $oscheck/trustcache append work/trustcache.bin $(cat resources/sshtarlist.txt)
@@ -159,16 +167,16 @@ if [[ "$USEROPTION" == ramdisk ]]; then
     $oscheck/img4 -i work/trustcache.bin -o bootchain/$filedir/trustcache.img4 -A -T rtsc -M "$IM4MPath"
     $oscheck/img4 -i work/ramdisk.dmg -o bootchain/$filedir/ramdisk.img4 -A -T rdsk -M "$IM4MPath"
 else
-        $oscheck/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".0."Manifest"."OS"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1)".trustcache -o bootchain/$filedir/trustcache.img4 -T rtsc -M "$IM4MPath"
+        $oscheck/img4 -i work/"$(bm_path work/BuildManifest.plist 0 OS)".trustcache -o bootchain/$filedir/trustcache.img4 -T rtsc -M "$IM4MPath"
 fi
 $oscheck/img4 -i work/"$(awk "/""${replace}""/{x=1}x&&/kernelcache.release/{print;exit}" work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1)" bootchain/$filedir/kernelcache.img4 -T rkrn -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."AOP"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/AOP.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ANE"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/ANE.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."AVE"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/AVE.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."ISP"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/ISP.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."GFX"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/GFX.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SIO"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f2-)" -o bootchain/$filedir/SIO.img4 -M "$IM4MPath"
-"$oscheck"/img4 -i work/"$(/usr/bin/plutil -extract "BuildIdentities".$bmindex."Manifest"."SEP"."Info"."Path" xml1 -o - work/BuildManifest.plist | grep '<string>' |cut -d\> -f2 |cut -d\< -f1 | head -1 |  cut -d'/' -f3-)" -o bootchain/$filedir/sep-firmware.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" AOP | cut -d'/' -f3-)" -o bootchain/$filedir/AOP.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" ANE | cut -d'/' -f3-)" -o bootchain/$filedir/ANE.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" AVE | cut -d'/' -f3-)" -o bootchain/$filedir/AVE.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" ISP | cut -d'/' -f3-)" -o bootchain/$filedir/ISP.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" GFX | cut -d'/' -f3-)" -o bootchain/$filedir/GFX.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" SIO | cut -d'/' -f2-)" -o bootchain/$filedir/SIO.img4 -M "$IM4MPath"
+"$oscheck"/img4 -i work/"$(bm_path work/BuildManifest.plist "$bmindex" SEP | cut -d'/' -f3-)" -o bootchain/$filedir/sep-firmware.img4 -M "$IM4MPath"
 
 
 cp work/iBoot.patched bootchain/$filedir/iBoot.patched.bin
