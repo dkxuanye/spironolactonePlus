@@ -73,7 +73,7 @@ mkdir work
 cd work
 if [ -z "$TYPE" ]; then
     if [ -t 0 ]; then
-        read -p "Are you going to be dualbooting, tether downgrading, or making a ramdisk:
+        read -p "Are you going to be dualbooting, tether downgrading, or making a ramdisk: 
 Type 'dualboot', 'downgrade' or 'ramdisk':" TYPE
     else
         die "missing --type (ramdisk|dualboot|downgrade) and stdin is not a TTY"
