@@ -108,5 +108,21 @@ rc=$?
     && echo "ok: unlockcd-R accepted" || note_fail "unlockcd-R (rc=$rc): $out"
 rm -rf "$FAKE"
 
+# --boot none: skips chain preflight and pwned check, works with no chain dir
+out=$(bash scripts/experiment_18x_mount.sh --mode ich-safe --boot none --dry-run 2>&1)
+rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "skipping boot phase" \
+    && echo "ok: boot none skips boot phase" || note_fail "boot none (rc=$rc): $out"
+
+# --boot none with nonexistent chain dir must NOT die on chain checks
+out=$(CHAIN_DIR=/nonexistent-chain bash scripts/experiment_18x_mount.sh --mode unlockcd --boot none --dry-run 2>&1)
+rc=$?
+[ "$rc" -eq 0 ] && echo "ok: boot none ignores chain dir" || note_fail "boot none chain check (rc=$rc): $out"
+
+# invalid --boot still rejected
+out=$(bash scripts/experiment_18x_mount.sh --mode ich-safe --boot bogus --dry-run 2>&1)
+[ $? -ne 0 ] && printf '%s' "$out" | grep -q "invalid --boot" \
+    && echo "ok: invalid --boot rejected" || note_fail "invalid --boot"
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"
