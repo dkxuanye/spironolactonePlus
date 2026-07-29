@@ -61,7 +61,11 @@ done
 if [ "$BOOT" = spiro ]; then
     [ -f "$CHAIN_DIR/boot_order.json" ] || die "spiro boot requires $CHAIN_DIR/boot_order.json (legacy fallback is only valid for 14.x chains)"
 fi
-log "preflight ok: chain=$CHAIN_DIR mode=$MODE boot=$BOOT"
+if [ "$BOOT" = none ]; then
+    log "preflight ok: chain=(unused, boot=none) mode=$MODE boot=$BOOT"
+else
+    log "preflight ok: chain=$CHAIN_DIR mode=$MODE boot=$BOOT"
+fi
 
 if [ "$DRY" = 1 ]; then
     if [ "$BOOT" = none ]; then
@@ -123,6 +127,7 @@ log "SSH connected"
     "$DEVICE_SCRIPT" root@localhost:/var/root/mount_experiment_18.sh \
     >>"$LOG_FILE" 2>&1 || die "scp device script failed"
 if [ "$MODE" = "unlockcd-chain-sep" ]; then
+    [ -f "$CHAIN_DIR/sep-firmware.img4" ] || die "chain SEP not found: $CHAIN_DIR/sep-firmware.img4 (set CHAIN_DIR when using --boot none)"
     "$oscheck"/sshpass -p "$SSH_PASS" scp "${SSH_OPTS[@]}" -P "$SSH_PORT" \
         "$CHAIN_DIR/sep-firmware.img4" root@localhost:/var/root/sep-chain.img4 \
         >>"$LOG_FILE" 2>&1 || die "scp chain SEP failed"
