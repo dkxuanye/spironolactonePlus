@@ -1,7 +1,7 @@
 #!/bin/bash
 # experiment_18x_mount.sh - Phase 0 host orchestrator: boot 18.7.9 chain, run mount experiment, collect verdict.
 # Usage:
-#   scripts/experiment_18x_mount.sh --mode ich-safe|unlockcd|unlockcd-chain-sep [--boot ich|spiro] [--no-reboot] [--dry-run]
+#   scripts/experiment_18x_mount.sh --mode ich-safe|unlockcd|unlockcd-R|unlockcd-chain-sep [--boot ich|spiro] [--no-reboot] [--dry-run]
 # Env: ICH_ROOT (default ~/Desktop/ICH_A12_plus_Ramdisk), CHAIN_DIR, SSH_PORT
 set -u
 oscheck="${SPIRO_OSCHECK:-$(uname)}"
@@ -18,7 +18,7 @@ IBOOT_MAPPING="resources/iboot_mapping.json"
 
 MODE=""; BOOT=ich; DRY=0; NO_REBOOT=0
 usage() {
-    echo "usage: $0 --mode ich-safe|unlockcd|unlockcd-chain-sep [--boot ich|spiro] [--no-reboot] [--dry-run]"
+    echo "usage: $0 --mode ich-safe|unlockcd|unlockcd-R|unlockcd-chain-sep [--boot ich|spiro] [--no-reboot] [--dry-run]"
 }
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -30,8 +30,8 @@ while [ "$#" -gt 0 ]; do
         *) die "unknown option: $1";;
     esac
 done
-[ -n "$MODE" ] || die "missing --mode ich-safe|unlockcd|unlockcd-chain-sep"
-case "$MODE" in ich-safe|unlockcd|unlockcd-chain-sep) ;; *) die "invalid --mode: $MODE";; esac
+[ -n "$MODE" ] || die "missing --mode ich-safe|unlockcd|unlockcd-R|unlockcd-chain-sep"
+case "$MODE" in ich-safe|unlockcd|unlockcd-R|unlockcd-chain-sep) ;; *) die "invalid --mode: $MODE";; esac
 case "$BOOT" in ich|spiro) ;; *) die "invalid --boot: $BOOT";; esac
 
 # boot-aware chain default: spiro boots the repo-local ich-18.7.9 symlink dir (with boot_order.json)

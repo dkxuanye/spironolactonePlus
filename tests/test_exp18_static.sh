@@ -29,5 +29,10 @@ awk '/seputil --load rc=/,/try_data/' "$F" | grep -q 'probe_volumes' \
     && check "post-SEP re-probe before try_data" 0 $? || check "post-SEP re-probe before try_data" 1 0
 grep -q "grep -E '\^\[0-9A-Fa-f\]{40" "$F"; check "hex-dir SEP fallback" 0 $?
 
+grep -q -- '--unlockcd-R' "$F"; check "has --unlockcd-R mode" 0 $?
+grep -q '"\$MOUNT_APFS" -R' "$F"; check "mount_apfs -R path" 0 $?
+awk '/--unlockcd\|--unlockcd-chain-sep\)/,/gigalocker-init/' "$F" | grep -n 'sep-firmware.img4\|/mnt6/active' | head -2 | sed -n '1p' | grep -q 'mnt1/usr/standalone' \
+    && check "System-volume SEP preferred" 0 $? || check "System-volume SEP preferred" 1 0
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_static: $fails FAILURES"; exit 1; fi
 echo "test_exp18_static: all pass"

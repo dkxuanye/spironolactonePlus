@@ -2,8 +2,11 @@
 # mount_experiment_18.sh - iOS 18/26 ramdisk Data-mount experiment (Phase 0 go/no-go).
 # Runs ON DEVICE inside the 18.x SSH ramdisk.
 #   --ich-safe             label-probe mounts + bare Data attempt (control group)
-#   --unlockcd             gigalocker-init + seputil --load <preboot SEP> + Data mount
+#   --unlockcd             gigalocker-init + seputil --load <SEP> + Data mount
+#   --unlockcd-R           same as --unlockcd but ALL mounts use mount_apfs -R (Flashcel technique, iOS 16+ convention)
 #   --unlockcd-chain-sep   gigalocker-init + seputil --load /var/root/sep-chain.img4 + Data mount
+# --unlockcd/--unlockcd-R SEP resolution is System-FIRST (Flashcel technique): /mnt1 (System volume)
+#   is the running system's own SEP — inherently matched; /mnt6 preboot active/hex-dir is the fallback.
 # Heavy calls (mount_apfs, seputil) are guarded by a 20s timeout with bounded reap. Verdict: /mnt2/{mobile,root,containers}.
 # Exit codes: 0=MOUNTED 75=NOT_READY 2=ERROR(no SEP/seputil) 4=FLOW_BROKEN(gigalocker-init) 76=refused(boot-args) 64=usage
 # Note: a kernel-wedged seputil yields rc 124 via the guard, but a device panic yields
@@ -16,9 +19,11 @@ MOUNT_APFS=/System/Library/Filesystems/apfs.fs/mount_apfs
 SEPUTIL=/usr/libexec/seputil
 
 MODE="${1:-}"
+MOUNT_R=0
 case "$MODE" in
     --ich-safe|--unlockcd|--unlockcd-chain-sep) ;;
-    *) echo "usage: $0 --ich-safe|--unlockcd|--unlockcd-chain-sep" >&2; exit 64;;
+    --unlockcd-R) MOUNT_R=1; MODE="--unlockcd" ;;
+    *) echo "usage: $0 --ich-safe|--unlockcd|--unlockcd-R|--unlockcd-chain-sep" >&2; exit 64;;
 esac
 
 log(){ echo "[exp18] $*"; }
@@ -96,7 +101,11 @@ mount_one(){
         return 0
     fi
     log "mount $dev -> $mp (20s timeout)"
-    run_bg_timeout 20 "$MOUNT_APFS" "$dev" "$mp"
+    if [ "$MOUNT_R" = "1" ]; then
+        run_bg_timeout 20 "$MOUNT_APFS" -R "$dev" "$mp"
+    else
+        run_bg_timeout 20 "$MOUNT_APFS" "$dev" "$mp"
+    fi
     rc=$?
     [ $rc -eq 0 ] || log "mount failed rc=$rc: $dev -> $mp"
     return $rc
@@ -129,17 +138,20 @@ case "$MODE" in
         if [ "$MODE" = "--unlockcd-chain-sep" ]; then
             SEP=/var/root/sep-chain.img4
         else
-            SEP=""
-            if [ -f /mnt6/active ]; then
-                a=$(/bin/cat /mnt6/active 2>/dev/null)
-                case "$a" in */*|*..*) a="" ;; esac
-                [ -n "$a" ] && SEP="/mnt6/$a/usr/standalone/firmware/sep-firmware.img4"
+            # Flashcel technique: System volume SEP is the running system's own SEP — inherently matched
+            SEP=/mnt1/usr/standalone/firmware/sep-firmware.img4
+            if [ ! -f "$SEP" ]; then
+                SEP=""
+                if [ -f /mnt6/active ]; then
+                    a=$(/bin/cat /mnt6/active 2>/dev/null)
+                    case "$a" in */*|*..*) a="" ;; esac
+                    [ -n "$a" ] && SEP="/mnt6/$a/usr/standalone/firmware/sep-firmware.img4"
+                fi
             fi
             if [ -z "$SEP" ] || [ ! -f "$SEP" ]; then
                 first=$(/bin/ls /mnt6 2>/dev/null | /usr/bin/grep -E '^[0-9A-Fa-f]{40,}$' | /usr/bin/head -n1)
                 [ -n "$first" ] && SEP="/mnt6/$first/usr/standalone/firmware/sep-firmware.img4"
             fi
-            [ -f "$SEP" ] || SEP=/mnt1/usr/standalone/firmware/sep-firmware.img4
         fi
         if [ ! -f "$SEP" ]; then
             log "VERDICT: ERROR no SEP file found (mode=$MODE)"

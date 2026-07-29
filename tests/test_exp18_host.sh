@@ -96,5 +96,17 @@ else
     [ "$rc" -ne 0 ] && echo "ok: preflight reports missing chain" || note_fail "preflight should fail without chain"
 fi
 
+# unlockcd-R mode accepted by host orchestrator
+FAKE=/tmp/fake-chain-$$
+mkdir -p "$FAKE"
+for f in iBoot.patched.bin sep-firmware.img4 devicetree.img4 trustcache.img4 ramdisk.img4 kernelcache.img4 AOP.img4 ANE.img4 AVE.img4 ISP.img4 GFX.img4 SIO.img4; do
+    printf 'x' > "$FAKE/$f"
+done
+out=$(CHAIN_DIR="$FAKE" bash scripts/experiment_18x_mount.sh --mode unlockcd-R --dry-run 2>&1)
+rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "unlockcd-R" \
+    && echo "ok: unlockcd-R accepted" || note_fail "unlockcd-R (rc=$rc): $out"
+rm -rf "$FAKE"
+
 if [ "$fails" -gt 0 ]; then echo "test_exp18_host: $fails FAILURES"; exit 1; fi
 echo "test_exp18_host: all pass"
