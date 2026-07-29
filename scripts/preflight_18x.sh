@@ -47,5 +47,5 @@ cat <<'EOF'
    bash scripts/experiment_18x_mount.sh --mode unlockcd
    bash scripts/experiment_18x_mount.sh --mode unlockcd-R
    bash scripts/experiment_18x_mount.sh --mode unlockcd-chain-sep
-6. 把三条 RESULT 行发回来，结论写入 RESEARCH_A12_18X.md
+6. 把四条 RESULT 行发回来，结论写入 RESEARCH_A12_18X.md
 EOF
